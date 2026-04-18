@@ -39,9 +39,7 @@
         }
 
         /* Smart Alerts */
-        .alert-pulse {
-            animation: borderPulse 2s infinite;
-        }
+        .alert-pulse { animation: borderPulse 2s infinite; }
         @keyframes borderPulse {
             0% { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
             50% { border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
@@ -99,12 +97,18 @@
     }
 }">
 
-    <header class="mb-8 flex items-center justify-between border-b border-slate-700/50 pb-4">
+    <header class="mb-8 flex items-center justify-between border-b border-slate-700/50 pb-4 relative z-10">
         <div class="flex items-center gap-3">
             <i data-lucide="hex" class="w-8 h-8 text-sky-400"></i>
             <h1 class="text-3xl font-bold tracking-tight text-slate-100 font-mono">Mission Control <span class="text-slate-500 font-light text-xl">| Enterprise</span></h1>
         </div>
         <div class="flex items-center gap-4 text-sm font-mono text-slate-400">
+            <!-- 2. Export to PDF Button -->
+            <a href="/export" target="_blank" class="flex items-center gap-2 text-slate-300 hover:text-white transition-colors mr-2">
+                <i data-lucide="download-cloud" class="w-4 h-4"></i> EXPORT REPORT
+            </a>
+            
+            <!-- Manual Sync Button -->
             <button @click="triggerSync()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded transition-colors border border-slate-600">
                 <i data-lucide="refresh-cw" class="w-4 h-4" :class="syncing ? 'animate-spin text-sky-400' : ''"></i> 
                 <span x-text="syncing ? 'SYNCING...' : 'MANUAL SYNC'"></span>
@@ -118,7 +122,16 @@
 
     <main class="max-w-[1600px] mx-auto space-y-8 relative z-10">
 
-        <!-- 1. Smart Telemetry Headers -->
+        <!-- 1. AI-Driven "System Briefing" -->
+        <section class="panel-glass p-4 border-l-4 border-l-purple-500 flex items-start gap-4">
+            <div class="p-2 bg-purple-500/10 rounded mt-1"><i data-lucide="brain-circuit" class="w-6 h-6 text-purple-400"></i></div>
+            <div>
+                <h3 class="text-xs font-mono text-purple-400 tracking-widest uppercase mb-1">AI Operational Briefing</h3>
+                <p class="text-sm text-slate-300 font-sans leading-relaxed">{{ ai_briefing }}</p>
+            </div>
+        </section>
+
+        <!-- Smart Telemetry Headers -->
         <section class="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div class="panel-glass p-5 border-l-2 border-l-blue-400 flex justify-between items-center relative overflow-hidden">
                 <div class="absolute right-[-10px] opacity-[0.03]"><i data-lucide="layers" class="w-32 h-32"></i></div>
@@ -381,7 +394,6 @@
                         marker.innerText = risksInCell.length;
                         marker.title = risksInCell.map(risk => risk.id).join(', ');
                         
-                        // Link the dot to the Alpine Modal
                         marker.setAttribute('@click', `activeItem = ${JSON.stringify(risksInCell[0]).replace(/"/g, '&quot;')}; modalType = 'risk'; modalOpen = true;`);
                         
                         cell.appendChild(marker);
