@@ -51,49 +51,55 @@ def get_recent_commits_for_path(path_pattern, limit=3):
     except Exception as e:
         return [f"[ERROR] Telemetry failure: {str(e)}"]
 
-# 2. Sanitize Function
+# 2. Sanitize & Bulletproof Mermaid Generator
 def sanitize_mermaid_string(text: str) -> str:
-    """Cleans project names and status strings to prevent Mermaid.js syntax errors."""
+    """Strict Sanitization: strip colons, semicolons, quotes, etc."""
     if not text:
         return "Unknown"
-    # Remove characters that break mermaid syntax (colons, commas, brackets, quotes)
-    cleaned = re.sub(r'[:;,\[\]"\'\(\)]', '', str(text))
+    cleaned = re.sub(r'[:;"\',\[\]\(\)]', '', str(text))
     return cleaned.strip()
 
-def generate_dynamic_roadmap(projects):
-    if not projects:
-        return ""
-
+def generate_mermaid_chart(projects):
+    """Generates a strictly validated Mermaid Gantt chart string."""
+    
+    # Empty State Logic: Return a valid but empty Gantt string
     lines = [
         "gantt",
         "    title Dynamic System Trajectory",
         "    dateFormat YYYY-MM-DD",
-        "    axisFormat %m/%d",
-        "    classDef green fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff;",
-        "    classDef yellow fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff;",
-        "    classDef red fill:#ef4444,stroke:#b91c1c,stroke-width:2px,color:#fff;"
+        "    axisFormat %m/%d"
     ]
+    
+    if not projects:
+        return "\n".join(lines)
 
-    base_date = datetime.utcnow()
+    # Keyword Mapping
+    status_map = {
+        'green': 'active',
+        'yellow': 'done',
+        'red': 'crit'
+    }
+
+    today_str = datetime.utcnow().strftime('%Y-%m-%d')
 
     for idx, proj in enumerate(projects):
         safe_name = sanitize_mermaid_string(proj.get('name', f'Project {idx}'))
-        status = sanitize_mermaid_string(proj.get('status', 'Green')).lower()
+        raw_status = sanitize_mermaid_string(proj.get('status', 'Green')).lower()
         
-        # Ensure status translates to one of our defined classes
-        if status not in ['green', 'yellow', 'red']:
-            status = 'green'
-
-        lines.append(f"    section {safe_name}")
+        # Default to active if unknown
+        mermaid_status = status_map.get(raw_status, 'active')
         
-        # Generate dynamic timeline bars
-        start = (base_date + timedelta(days=(idx * 5))).strftime('%Y-%m-%d')
+        # Date Validation: Check format or fallback to today
+        start_date = proj.get('start_date', today_str)
+        if not re.match(r'^\d{4}-\d{2}-\d{2}$', str(start_date)):
+            start_date = today_str
+            
         duration = max(10, proj.get('completion_pct', 30))
         task_id = f"t{idx}"
         
-        # Format: Task Name : [tags], [id], [start_date], [length]
-        lines.append(f"    Execution Phase :active, {task_id}, {start}, {duration}d")
-        lines.append(f"    class {task_id} {status}")
+        # Section Handling & Task Definition
+        lines.append(f"    section {safe_name}")
+        lines.append(f"    Execution Phase :{mermaid_status}, {task_id}, {start_date}, {duration}d")
 
     return "\n".join(lines)
 
@@ -131,11 +137,12 @@ def get_projects_cached():
                     normalized_dir = project_dir.replace('\\', '/')
                     git_logs = get_recent_commits_for_path(normalized_dir, limit=3)
 
-                    projects_data.append({
+                                        projects_data.append({
                         'id': f"proj-{idx}",
                         'name': name,
                         'status': status,
                         'owner': "Classified" if PORTFOLIO_MODE else post.get('owner', 'Unassigned'),
+                        'start_date': post.get('start_date', ''),
                         'completion_pct': comp_pct,
                         'monthly_spend': monthly_spend,
                         'next_steps': post.get('next_steps', 'None'),
@@ -335,9 +342,9 @@ async def read_dashboard(request: Request):
     total_monthly_spend = sum(p.get('monthly_spend', 0) for p in projects)
     
         # 3. Smart Roadmap Highlighting (Dynamically Generated & Sanitized)
-    roadmap_content = generate_dynamic_roadmap(projects)
+        roadmap_content = generate_mermaid_chart(projects)
 
-    return templates.TemplateResponse(
+        return templates.TemplateResponse(
         request=request, 
         name="index.html", 
         context={
