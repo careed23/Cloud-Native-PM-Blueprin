@@ -3,194 +3,223 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mission Control | Observability</title>
-    <!-- Tailwind CSS -->
+    <title>Mission Control | Enterprise</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Mermaid.js -->
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <style>
-        /* CSS Scanline/Grid Background */
+        /* Day 2: Blueprint Grid Background */
         body {
-            background-color: #0b1120; /* Very dark slate */
+            background-color: #020617; /* Very dark slate, almost black */
             color: #f8fafc;
             font-family: 'Inter', sans-serif;
             background-image: 
-                linear-gradient(rgba(30, 41, 59, 0.3) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(30, 41, 59, 0.3) 1px, transparent 1px);
-            background-size: 40px 40px;
+                linear-gradient(rgba(14, 165, 233, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(14, 165, 233, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
             background-position: center center;
+            position: relative;
+        }
+
+        /* Radial Overlay for focus */
+        body::before {
+            content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle at center, transparent 0%, #020617 90%);
+            z-index: -1; pointer-events: none;
         }
 
         .panel-glass {
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(51, 65, 85, 0.6);
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(51, 65, 85, 0.5);
             border-radius: 0.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
 
-        /* Digital Twin Aesthetic / Glowing Borders */
-        .glow-card { transition: all 0.3s ease; cursor: pointer; }
-        .glow-card:hover { transform: translateY(-2px); box-shadow: 0 0 20px -5px rgba(56, 189, 248, 0.3); border-color: rgba(56, 189, 248, 0.5); }
+        /* Smart Alerts */
+        .alert-pulse {
+            animation: borderPulse 2s infinite;
+        }
+        @keyframes borderPulse {
+            0% { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
+            50% { border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+            100% { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
+        }
+
+        .glow-card { transition: all 0.2s ease; cursor: pointer; }
+        .glow-card:hover { transform: translateY(-3px); box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.2); border-color: rgba(56, 189, 248, 0.4); }
         
-        .status-Red { box-shadow: inset 0 0 20px -10px rgba(239, 68, 68, 0.5); border-top: 2px solid #ef4444 !important; }
-        .status-Yellow { box-shadow: inset 0 0 20px -10px rgba(245, 158, 11, 0.5); border-top: 2px solid #f59e0b !important; }
-        .status-Green { box-shadow: inset 0 0 20px -10px rgba(16, 185, 129, 0.5); border-top: 2px solid #10b981 !important; }
+        .status-Red { border-top: 3px solid #ef4444 !important; }
+        .status-Yellow { border-top: 3px solid #f59e0b !important; }
+        .status-Green { border-top: 3px solid #10b981 !important; }
 
-        .progress-Red { background-color: #ef4444; box-shadow: 0 0 8px #ef4444; }
-        .progress-Yellow { background-color: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
-        .progress-Green { background-color: #10b981; box-shadow: 0 0 8px #10b981; }
+        .progress-Red { background-color: #ef4444; box-shadow: 0 0 10px #ef4444; }
+        .progress-Yellow { background-color: #f59e0b; box-shadow: 0 0 10px #f59e0b; }
+        .progress-Green { background-color: #10b981; box-shadow: 0 0 10px #10b981; }
 
-        /* The Risk Heatmap (5x5 CSS Grid) */
-        .heatmap-container {
-            display: grid;
-            grid-template-columns: 20px 1fr;
-            grid-template-rows: 1fr 20px;
-            gap: 8px;
-            padding: 10px;
-        }
+        /* The Risk Heatmap */
+        .heatmap-container { display: grid; grid-template-columns: 20px 1fr; grid-template-rows: 1fr 20px; gap: 8px; padding: 10px; }
+        .heat-grid { grid-column: 2; grid-row: 1; display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); gap: 2px; background: rgba(15, 23, 42, 0.9); border: 1px solid #334155; aspect-ratio: 1; }
+        .heat-cell { position: relative; display: flex; align-items: center; justify-content: center; }
+        .bg-heat-high { background: radial-gradient(circle at center, rgba(239, 68, 68, 0.4) 0%, rgba(239, 68, 68, 0.1) 100%); }
+        .bg-heat-med { background: radial-gradient(circle at center, rgba(245, 158, 11, 0.3) 0%, rgba(245, 158, 11, 0.1) 100%); }
+        .bg-heat-low { background: radial-gradient(circle at center, rgba(16, 185, 129, 0.15) 0%, transparent 100%); }
+        .risk-dot { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; color: #fff; box-shadow: 0 0 12px currentColor; z-index: 10; cursor: pointer; transition: transform 0.2s; }
+        .risk-dot:hover { transform: scale(1.3); }
 
-        .heat-grid {
-            grid-column: 2; grid-row: 1;
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            grid-template-rows: repeat(5, 1fr);
-            gap: 2px;
-            background: rgba(15, 23, 42, 0.9);
-            border: 1px solid #334155;
-            aspect-ratio: 1;
-        }
+        .axis-y { grid-column: 1; grid-row: 1; writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-size: 10px; color: #64748b; letter-spacing: 2px; text-transform: uppercase;}
+        .axis-x { grid-column: 2; grid-row: 2; text-align: center; font-size: 10px; color: #64748b; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px;}
 
-        .heat-cell {
-            position: relative;
-            display: flex; align-items: center; justify-content: center;
-        }
-        
-        /* High-risk areas (Top Right) get red background */
-        .bg-heat-high { background: radial-gradient(circle at center, rgba(239, 68, 68, 0.3) 0%, rgba(239, 68, 68, 0.05) 100%); }
-        .bg-heat-med { background: radial-gradient(circle at center, rgba(245, 158, 11, 0.2) 0%, rgba(245, 158, 11, 0.05) 100%); }
-        .bg-heat-low { background: radial-gradient(circle at center, rgba(16, 185, 129, 0.1) 0%, transparent 100%); }
-
-        .risk-dot {
-            width: 16px; height: 16px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 9px; font-weight: bold; color: #fff;
-            box-shadow: 0 0 10px currentColor; z-index: 10; cursor: help;
-        }
-
-        .axis-y { grid-column: 1; grid-row: 1; writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-size: 10px; color: #94a3b8; letter-spacing: 2px; text-transform: uppercase;}
-        .axis-x { grid-column: 2; grid-row: 2; text-align: center; font-size: 10px; color: #94a3b8; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px;}
-
-        /* Terminal Window */
-        .terminal-window {
-            background-color: #000; border: 1px solid #334155; border-radius: 0.5rem;
-            font-family: 'Courier New', Courier, monospace; overflow: hidden;
-        }
-        .terminal-header { background: #1e293b; padding: 4px 12px; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between;}
-        .terminal-body { height: 200px; overflow-y: auto; padding: 12px; font-size: 12px; }
-        
-        /* Modal */
-        .modal-bg { background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); }
-        .prose h1, .prose h2 { color: #f8fafc; font-weight: bold; margin-bottom: 1rem; }
-        .prose table { width: 100%; border-collapse: collapse; margin-top: 1rem; margin-bottom: 1rem; }
-        .prose th, .prose td { border: 1px solid #334155; padding: 0.5rem; text-align: left; }
-        .prose th { background-color: #1e293b; }
+        /* Modals and Markdown Prose */
+        .modal-bg { background-color: rgba(2, 6, 23, 0.85); backdrop-filter: blur(8px); }
+        .prose h1 { color: #f8fafc; font-weight: 800; margin-bottom: 1.5rem; font-size: 1.875rem; border-bottom: 1px solid #334155; padding-bottom: 0.5rem;}
+        .prose h2 { color: #e2e8f0; font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; font-size: 1.25rem;}
+        .prose table { width: 100%; border-collapse: collapse; margin-top: 1rem; margin-bottom: 1rem; font-size: 0.875rem; }
+        .prose th, .prose td { border: 1px solid #334155; padding: 0.75rem; text-align: left; }
+        .prose th { background-color: rgba(30, 41, 59, 0.8); color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;}
+        .prose blockquote { border-left: 4px solid #38bdf8; padding-left: 1rem; color: #94a3b8; font-style: italic; }
     </style>
 </head>
-<body class="min-h-screen p-6" x-data="{ modalOpen: false, activeProject: null }">
+<body class="min-h-screen p-6" x-data="{ 
+    modalOpen: false, 
+    activeItem: null, 
+    modalType: 'project',
+    syncing: false,
+    async triggerSync() {
+        this.syncing = true;
+        try {
+            await fetch('/sync', {method: 'POST'});
+            window.location.reload();
+        } catch(e) {
+            console.error(e);
+            this.syncing = false;
+        }
+    }
+}">
 
-    <header class="mb-8 flex items-center justify-between border-b border-slate-700 pb-4">
+    <header class="mb-8 flex items-center justify-between border-b border-slate-700/50 pb-4">
         <div class="flex items-center gap-3">
-            <i data-lucide="satellite" class="w-8 h-8 text-cyan-400"></i>
-            <h1 class="text-3xl font-bold tracking-tight text-slate-100 font-mono">Mission Control <span class="text-slate-500 font-light text-xl">| Observability Platform</span></h1>
+            <i data-lucide="hex" class="w-8 h-8 text-sky-400"></i>
+            <h1 class="text-3xl font-bold tracking-tight text-slate-100 font-mono">Mission Control <span class="text-slate-500 font-light text-xl">| Enterprise</span></h1>
         </div>
-        <div class="flex items-center gap-2 text-sm font-mono text-slate-400">
-            <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-            SYS_OP: <span class="text-emerald-400 font-bold">NOMINAL</span>
+        <div class="flex items-center gap-4 text-sm font-mono text-slate-400">
+            <button @click="triggerSync()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded transition-colors border border-slate-600">
+                <i data-lucide="refresh-cw" class="w-4 h-4" :class="syncing ? 'animate-spin text-sky-400' : ''"></i> 
+                <span x-text="syncing ? 'SYNCING...' : 'MANUAL SYNC'"></span>
+            </button>
+            <div class="flex items-center gap-2 border-l border-slate-700 pl-4">
+                <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                SYS_OP: <span class="text-emerald-400 font-bold">NOMINAL</span>
+            </div>
         </div>
     </header>
 
-    <main class="max-w-[1400px] mx-auto space-y-6">
+    <main class="max-w-[1600px] mx-auto space-y-8 relative z-10">
 
-        <!-- 1. The Telemetry Header (KPI Layer) -->
-        <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- 1. Smart Telemetry Headers -->
+        <section class="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div class="panel-glass p-5 border-l-2 border-l-blue-400 flex justify-between items-center relative overflow-hidden">
-                <div class="absolute right-[-10px] opacity-10"><i data-lucide="server" class="w-24 h-24"></i></div>
+                <div class="absolute right-[-10px] opacity-[0.03]"><i data-lucide="layers" class="w-32 h-32"></i></div>
                 <div class="z-10">
                     <p class="text-[10px] text-slate-400 font-mono uppercase tracking-widest mb-1">Total Instances</p>
                     <p class="text-4xl font-bold font-mono text-white">{{ telemetry.total_projects }}</p>
                 </div>
             </div>
 
-            <div class="panel-glass p-5 border-l-2 border-l-emerald-400 flex justify-between items-center relative overflow-hidden">
-                <div class="absolute right-[-10px] opacity-10"><i data-lucide="activity" class="w-24 h-24"></i></div>
+            <!-- Smart Alert: Health -->
+            <div class="panel-glass p-5 border-l-2 flex justify-between items-center relative overflow-hidden {% if telemetry.health < 80 %}border-l-red-500 alert-pulse{% else %}border-l-emerald-400{% endif %}">
+                <div class="absolute right-[-10px] opacity-[0.03]"><i data-lucide="activity" class="w-32 h-32"></i></div>
                 <div class="z-10">
-                    <p class="text-[10px] text-slate-400 font-mono uppercase tracking-widest mb-1">Fleet Health</p>
-                    <p class="text-4xl font-bold font-mono {% if telemetry.health >= 80 %}text-emerald-400{% else %}text-amber-400{% endif %}">{{ telemetry.health }}%</p>
+                    <p class="text-[10px] text-slate-400 font-mono uppercase tracking-widest mb-1 flex items-center gap-2">
+                        Fleet Health 
+                        {% if telemetry.health < 80 %}<i data-lucide="alert-circle" class="w-3 h-3 text-red-400"></i>{% endif %}
+                    </p>
+                    <p class="text-4xl font-bold font-mono {% if telemetry.health < 80 %}text-red-400{% else %}text-emerald-400{% endif %}">{{ telemetry.health }}%</p>
                 </div>
             </div>
 
-            <div class="panel-glass p-5 border-l-2 border-l-red-400 flex justify-between items-center relative overflow-hidden">
-                <div class="absolute right-[-10px] opacity-10"><i data-lucide="shield-alert" class="w-24 h-24"></i></div>
+            <!-- Smart Alert: Risks -->
+            <div class="panel-glass p-5 border-l-2 flex justify-between items-center relative overflow-hidden {% if telemetry.active_risks > 5 %}border-l-red-500 alert-pulse{% else %}border-l-amber-400{% endif %}">
+                <div class="absolute right-[-10px] opacity-[0.03]"><i data-lucide="shield-alert" class="w-32 h-32"></i></div>
                 <div class="z-10">
-                    <p class="text-[10px] text-slate-400 font-mono uppercase tracking-widest mb-1">Active Risks (Impact > 3)</p>
-                    <p class="text-4xl font-bold font-mono {% if telemetry.active_risks > 0 %}text-red-400{% else %}text-emerald-400{% endif %}">{{ telemetry.active_risks }}</p>
+                    <p class="text-[10px] text-slate-400 font-mono uppercase tracking-widest mb-1 flex items-center gap-2">
+                        Critical Risks 
+                        {% if telemetry.active_risks > 5 %}<i data-lucide="alert-triangle" class="w-3 h-3 text-red-400"></i>{% endif %}
+                    </p>
+                    <p class="text-4xl font-bold font-mono {% if telemetry.active_risks > 5 %}text-red-400{% else %}text-amber-400{% endif %}">{{ telemetry.active_risks }}</p>
+                </div>
+            </div>
+
+            <!-- Automated Cloud Cost Projection -->
+            <div class="panel-glass p-5 border-l-2 border-l-purple-400 flex justify-between items-center relative overflow-hidden">
+                <div class="absolute right-[-10px] opacity-[0.03]"><i data-lucide="pie-chart" class="w-32 h-32"></i></div>
+                <div class="z-10 w-full">
+                    <div class="flex justify-between items-start">
+                        <p class="text-[10px] text-slate-400 font-mono uppercase tracking-widest mb-1">OPEX Forecast</p>
+                        <!-- Sparkline SVG -->
+                        <svg class="w-16 h-6 text-purple-400/50" viewBox="0 0 100 30" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M0 25 L20 20 L40 28 L60 15 L80 18 L100 5" stroke-linejoin="round" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <p class="text-4xl font-bold font-mono text-white">${{ "{:,}".format(telemetry.monthly_spend) }}<span class="text-sm text-slate-500 font-light">/mo</span></p>
                 </div>
             </div>
         </section>
 
-        <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
             
             <!-- Left Side: Instances -->
-            <div class="xl:col-span-3 space-y-6">
+            <div class="xl:col-span-3 space-y-8">
                 <!-- Projects Grid -->
                 <section>
-                    <h2 class="text-xs font-mono text-slate-400 mb-3 tracking-widest uppercase flex items-center gap-2">
-                        <i data-lucide="cpu" class="w-4 h-4 text-cyan-400"></i> Active Instances
+                    <h2 class="text-xs font-mono text-slate-500 mb-4 tracking-widest uppercase flex items-center gap-2">
+                        <i data-lucide="cpu" class="w-4 h-4 text-sky-400"></i> Active Instances
                     </h2>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {% for project in projects %}
                         
-                        <div class="panel-glass glow-card status-{{ project.status }} p-5 flex flex-col h-full"
-                             @click="activeProject = {{ project | tojson | forceescape }}; modalOpen = true;">
+                        <div class="panel-glass glow-card status-{{ project.status }} p-6 flex flex-col h-full"
+                             @click="activeItem = {{ project | tojson | forceescape }}; modalType = 'project'; modalOpen = true;">
                             
-                            <div class="flex justify-between items-start mb-4">
+                            <div class="flex justify-between items-start mb-6">
                                 <div class="flex gap-3">
-                                    <div class="mt-1"><i data-lucide="layout-template" class="w-5 h-5 text-slate-500"></i></div>
+                                    <div class="mt-1"><i data-lucide="layout-template" class="w-5 h-5 text-slate-400"></i></div>
                                     <div>
-                                        <h3 class="text-lg font-bold text-slate-100">{{ project.name }}</h3>
+                                        <h3 class="text-lg font-bold text-slate-100 tracking-wide">{{ project.name }}</h3>
                                         <p class="text-[10px] text-slate-400 font-mono mt-1">OWNER: {{ project.owner }}</p>
                                     </div>
                                 </div>
-                                <span class="px-2 py-1 text-[9px] font-bold rounded bg-slate-800 border border-slate-700 uppercase tracking-widest text-slate-300">
-                                    {{ project.status }}
-                                </span>
+                                <div class="flex flex-col items-end gap-2">
+                                    <span class="px-2 py-1 text-[9px] font-bold rounded bg-slate-800/80 border border-slate-700 uppercase tracking-widest text-slate-300">
+                                        {{ project.status }}
+                                    </span>
+                                    <!-- Budget Indicator -->
+                                    <span class="text-[10px] font-mono text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded border border-purple-400/20">
+                                        ${{ "{:,}".format(project.monthly_spend) }}/mo
+                                    </span>
+                                </div>
                             </div>
 
-                            <div class="mb-4">
-                                <div class="flex justify-between text-[10px] mb-1 font-mono text-slate-400">
-                                    <span>CAPACITY</span>
+                            <div class="mb-6">
+                                <div class="flex justify-between text-[10px] mb-2 font-mono text-slate-400">
+                                    <span>CAPACITY ALLOCATION</span>
                                     <span class="text-slate-200">{{ project.completion_pct }}%</span>
                                 </div>
-                                <div class="w-full bg-slate-800 rounded-full h-1">
-                                    <div class="progress-{{ project.status }} h-1 rounded-full" style="width: {{ project.completion_pct }}%"></div>
+                                <div class="w-full bg-slate-800/50 rounded-full h-1.5 border border-slate-700">
+                                    <div class="progress-{{ project.status }} h-1.5 rounded-full" style="width: {{ project.completion_pct }}%"></div>
                                 </div>
                             </div>
 
-                            <!-- 3. Integrated Git "Commit History" (The Proof of Work) -->
-                            <div class="mt-auto bg-black/60 rounded border border-slate-800 p-2 overflow-hidden">
-                                <div class="text-[9px] text-slate-500 font-mono uppercase tracking-widest mb-1 flex items-center gap-1">
+                            <div class="mt-auto bg-[#020617] rounded border border-slate-800/80 p-3">
+                                <div class="text-[9px] text-slate-500 font-mono uppercase tracking-widest mb-2 flex items-center gap-1">
                                     <i data-lucide="terminal" class="w-3 h-3"></i> LATEST_DEPLOY_LOGS
                                 </div>
-                                <div class="font-mono text-[10px] text-slate-300 space-y-1">
+                                <div class="font-mono text-[10px] text-slate-400 space-y-1">
                                     {% for log in project.logs %}
-                                    <div class="truncate opacity-80">> {{ log }}</div>
+                                    <div class="truncate hover:text-slate-200 transition-colors">> {{ log }}</div>
                                     {% endfor %}
                                 </div>
                             </div>
@@ -201,11 +230,11 @@
 
                 <!-- Roadmap -->
                 {% if roadmap %}
-                <section class="panel-glass p-5">
-                    <h2 class="text-xs font-mono text-slate-400 mb-3 tracking-widest uppercase flex items-center gap-2">
-                        <i data-lucide="git-pull-request" class="w-4 h-4 text-indigo-400"></i> Trajectory
+                <section class="panel-glass p-6">
+                    <h2 class="text-xs font-mono text-slate-500 mb-4 tracking-widest uppercase flex items-center gap-2">
+                        <i data-lucide="git-pull-request" class="w-4 h-4 text-indigo-400"></i> Trajectory Matrix
                     </h2>
-                    <div class="overflow-x-auto text-sm">
+                    <div class="overflow-x-auto text-sm bg-[#020617]/50 rounded-lg p-2 border border-slate-800">
                         <div class="mermaid">{{ roadmap }}</div>
                     </div>
                 </section>
@@ -213,44 +242,48 @@
             </div>
 
             <!-- Right Side: Threat Matrix & Events -->
-            <div class="xl:col-span-1 space-y-6">
+            <div class="xl:col-span-1 space-y-8">
                 
                 <!-- 2. The Risk Heatmap -->
-                <section class="panel-glass p-4">
-                    <h2 class="text-xs font-mono text-slate-400 mb-3 tracking-widest uppercase flex items-center gap-2">
-                        <i data-lucide="radar" class="w-4 h-4 text-amber-400"></i> Threat Matrix (Impact x Prob)
+                <section class="panel-glass p-5">
+                    <h2 class="text-xs font-mono text-slate-500 mb-4 tracking-widest uppercase flex items-center gap-2">
+                        <i data-lucide="radar" class="w-4 h-4 text-amber-400"></i> Threat Matrix
                     </h2>
                     
-                    <div class="heatmap-container">
-                        <div class="axis-y">IMPACT (1-5)</div>
-                        <div class="heat-grid" id="riskGrid">
-                            <!-- JS Generated -->
-                        </div>
-                        <div class="axis-x">PROBABILITY (1-5)</div>
+                    <div class="heatmap-container mb-4">
+                        <div class="axis-y">IMPACT</div>
+                        <div class="heat-grid" id="riskGrid"></div>
+                        <div class="axis-x">PROBABILITY</div>
                     </div>
 
-                    <div class="mt-4 space-y-1 max-h-40 overflow-y-auto pr-1 scrollbar-thin font-mono text-[10px]">
-                        {% for risk in risks %}
-                        <div class="flex gap-2 items-center text-slate-300 border-b border-slate-800 pb-1">
-                            <span class="font-bold text-amber-400 w-8">{{ risk.id }}</span>
-                            <span class="truncate">{{ risk.description }}</span>
+                    <div class="bg-[#020617] rounded border border-slate-800 p-2">
+                        <div class="text-[9px] text-slate-500 font-mono uppercase tracking-widest mb-2 px-2 pt-1">Active Vectors</div>
+                        <div class="space-y-1 max-h-48 overflow-y-auto pr-1 scrollbar-thin font-mono text-[10px]">
+                            {% for risk in risks %}
+                            <div class="flex gap-2 items-center text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 p-1.5 rounded cursor-pointer transition-colors"
+                                 @click="activeItem = {{ risk | tojson | forceescape }}; modalType = 'risk'; modalOpen = true;">
+                                <span class="font-bold {% if risk.impact > 3 %}text-red-400{% else %}text-amber-400{% endif %} w-8">{{ risk.id }}</span>
+                                <span class="truncate">{{ risk.description }}</span>
+                            </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
                     </div>
                 </section>
 
                 <!-- 4. The System Events Feed -->
-                <section class="terminal-window" x-data="systemEvents()">
-                    <div class="terminal-header">
-                        <span>/events/syslog</span>
-                        <span>[TAIL -F]</span>
+                <section class="panel-glass overflow-hidden flex flex-col h-64" x-data="systemEvents()">
+                    <div class="bg-slate-900 border-b border-slate-800 p-3 flex justify-between items-center">
+                        <span class="text-[10px] font-mono text-slate-400 flex items-center gap-2">
+                            <i data-lucide="activity-square" class="w-3 h-3 text-emerald-400"></i> /events/syslog
+                        </span>
+                        <span class="text-[9px] font-mono text-slate-500">[TAIL -F]</span>
                     </div>
-                    <div class="terminal-body scrollbar-thin">
+                    <div class="flex-1 bg-[#000] p-4 font-mono text-[10px] overflow-y-auto scrollbar-thin">
                         <template x-for="event in events" :key="event">
-                            <div class="mb-1">
+                            <div class="mb-1.5 opacity-80 hover:opacity-100">
                                 <span x-show="event.includes('[OK]')" class="text-emerald-400" x-text="event"></span>
                                 <span x-show="event.includes('[WARN]') || event.includes('[ERROR]')" class="text-amber-400" x-text="event"></span>
-                                <span x-show="!event.includes('[OK]') && !event.includes('[WARN]') && !event.includes('[ERROR]')" class="text-slate-300" x-text="event"></span>
+                                <span x-show="!event.includes('[OK]') && !event.includes('[WARN]') && !event.includes('[ERROR]')" class="text-slate-400" x-text="event"></span>
                             </div>
                         </template>
                         <div class="animate-pulse text-emerald-400 mt-2">> _</div>
@@ -259,35 +292,47 @@
 
             </div>
         </div>
-
     </main>
 
-    <!-- Instance Modal (Alpine) -->
-    <div x-show="modalOpen" class="fixed inset-0 z-50 flex justify-end" style="display: none;">
+    <!-- Deep Insight Modal (Alpine) -->
+    <div x-show="modalOpen" class="fixed inset-0 z-50 flex justify-center items-center p-4 sm:p-6" style="display: none;">
+        <!-- Backdrop -->
         <div x-show="modalOpen" x-transition.opacity class="fixed inset-0 modal-bg" @click="modalOpen = false"></div>
         
+        <!-- Modal Panel -->
         <div x-show="modalOpen" 
-             x-transition:enter="transition ease-in-out duration-300 transform"
-             x-transition:enter-start="translate-x-full"
-             x-transition:enter-end="translate-x-0"
-             x-transition:leave="transition ease-in-out duration-300 transform"
-             x-transition:leave-start="translate-x-0"
-             x-transition:leave-end="translate-x-full"
-             class="relative w-full max-w-2xl bg-slate-900 border-l border-slate-700 h-full overflow-y-auto shadow-2xl flex flex-col">
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             class="relative w-full max-w-4xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
             
-            <div class="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/90 sticky top-0 backdrop-blur z-10">
-                <div>
-                    <h2 class="text-2xl font-bold font-mono text-white flex items-center gap-2">
-                        <i data-lucide="box" class="w-6 h-6 text-cyan-400"></i> <span x-text="activeProject?.name"></span>
-                    </h2>
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/95 backdrop-blur shrink-0">
+                <div class="flex items-center gap-3">
+                    <!-- Dynamic Icon based on type -->
+                    <template x-if="modalType === 'project'">
+                        <i data-lucide="box" class="w-6 h-6 text-sky-400"></i>
+                    </template>
+                    <template x-if="modalType === 'risk'">
+                        <i data-lucide="alert-triangle" class="w-6 h-6 text-red-400"></i>
+                    </template>
+                    
+                    <div>
+                        <h2 class="text-xl font-bold font-mono text-white" x-text="modalType === 'project' ? activeItem?.name : activeItem?.id + ' : ' + activeItem?.description"></h2>
+                        <p class="text-slate-500 text-[10px] font-mono mt-0.5" x-text="modalType === 'project' ? 'TECH_SPEC_SHEET // ' + activeItem?.owner : 'THREAT_VECTOR_ANALYSIS'"></p>
+                    </div>
                 </div>
-                <button @click="modalOpen = false" class="text-slate-400 hover:text-white p-2">
-                    <i data-lucide="x" class="w-6 h-6"></i>
+                <button @click="modalOpen = false" class="text-slate-400 hover:text-white hover:bg-slate-800 p-2 rounded transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
 
-            <div class="p-6 flex-1">
-                <div class="prose prose-invert max-w-none text-slate-300 text-sm" x-html="activeProject?.html_content"></div>
+            <!-- Body -->
+            <div class="p-6 overflow-y-auto bg-[#020617]">
+                <div class="prose prose-invert max-w-none text-slate-300 leading-relaxed font-sans" x-html="activeItem?.html_content"></div>
             </div>
         </div>
     </div>
@@ -301,20 +346,17 @@
         lucide.createIcons();
         mermaid.initialize({ startOnLoad: true, theme: 'dark', backgroundColor: 'transparent' });
 
-        // Heatmap Component
+        // Heatmap Logic
         document.addEventListener('DOMContentLoaded', () => {
             const grid = document.getElementById('riskGrid');
             const rawData = document.getElementById('riskData').textContent;
             let risks = [];
             try { risks = JSON.parse(rawData); } catch(e) {}
 
-            // 5x5 Grid initialization
             const gridMap = Array(5).fill(null).map(() => Array(5).fill([]));
-            
             risks.forEach((r) => {
-                // Ensure bounds 1-5, transform to 0-4 arrays
-                let x = Math.max(1, Math.min(5, r.probability)) - 1; // Col
-                let y = 5 - Math.max(1, Math.min(5, r.impact)); // Row (inverted so 5 is top)
+                let x = Math.max(1, Math.min(5, r.probability)) - 1;
+                let y = 5 - Math.max(1, Math.min(5, r.impact));
                 gridMap[y][x].push(r);
             });
 
@@ -323,12 +365,8 @@
                     const cell = document.createElement('div');
                     cell.className = 'heat-cell';
                     
-                    // Heat gradient zones
-                    // Top Right (r<2, c>2) is High Risk
                     if (r <= 1 && c >= 3) cell.classList.add('bg-heat-high');
-                    // Middle is Med
                     else if ((r <= 2 && c >= 2) || (r <= 3 && c >= 3)) cell.classList.add('bg-heat-med');
-                    // Rest is Low
                     else cell.classList.add('bg-heat-low');
 
                     const risksInCell = gridMap[r][c];
@@ -336,13 +374,16 @@
                         const marker = document.createElement('div');
                         marker.className = 'risk-dot';
                         
-                        // Color logic based on zone
                         if (r <= 1 && c >= 3) { marker.style.color = '#ef4444'; marker.style.backgroundColor = '#ef4444'; }
                         else if ((r <= 2 && c >= 2) || (r <= 3 && c >= 3)) { marker.style.color = '#f59e0b'; marker.style.backgroundColor = '#f59e0b'; }
                         else { marker.style.color = '#10b981'; marker.style.backgroundColor = '#10b981'; }
                         
                         marker.innerText = risksInCell.length;
                         marker.title = risksInCell.map(risk => risk.id).join(', ');
+                        
+                        // Link the dot to the Alpine Modal
+                        marker.setAttribute('@click', `activeItem = ${JSON.stringify(risksInCell[0]).replace(/"/g, '&quot;')}; modalType = 'risk'; modalOpen = true;`);
+                        
                         cell.appendChild(marker);
                     }
                     grid.appendChild(cell);
@@ -350,13 +391,12 @@
             }
         });
 
-        // Alpine Component for Event Feed Polling
+        // Event Polling
         document.addEventListener('alpine:init', () => {
             Alpine.data('systemEvents', () => ({
                 events: [],
                 init() {
                     this.fetchEvents();
-                    // Poll every 30 seconds
                     setInterval(() => this.fetchEvents(), 30000);
                 },
                 async fetchEvents() {
