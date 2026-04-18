@@ -21,14 +21,14 @@ def parse_risks(filepath):
                     in_table = True
                     continue
                 if in_table and '|' in line:
-                    cols = [c.strip() for c in line.split('|')]
-                    if len(cols) > 5:
-                        # Assuming structure: | Risk ID | Description | Probability | Impact | ...
+                    cols = [c.strip() for c in line.split('|') if c.strip()] # Filter out empty strings
+                    if len(cols) >= 4: # Check for at least 4 meaningful columns (ID, Desc, Prob, Impact)
+                        # Assuming structure: Risk ID | Description | Probability | Impact | ...
                         risks.append({
-                            'id': cols[1],
-                            'description': cols[2],
-                            'probability': cols[3],
-                            'impact': cols[4]
+                            'id': cols[0],
+                            'description': cols[1],
+                            'probability': cols[2],
+                            'impact': cols[3]
                         })
     except Exception as e:
         print(f"Error parsing risks in {filepath}: {e}")

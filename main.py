@@ -137,7 +137,7 @@ def get_projects_cached():
                     normalized_dir = project_dir.replace('\\', '/')
                     git_logs = get_recent_commits_for_path(normalized_dir, limit=3)
 
-                                        projects_data.append({
+                    projects_data.append({
                         'id': f"proj-{idx}",
                         'name': name,
                         'status': status,
@@ -341,10 +341,10 @@ async def read_dashboard(request: Request):
     active_risks = sum(1 for r in risks if r.get('impact', 0) > 3 and r.get('status', '').lower() != 'closed')
     total_monthly_spend = sum(p.get('monthly_spend', 0) for p in projects)
     
-        # 3. Smart Roadmap Highlighting (Dynamically Generated & Sanitized)
-        roadmap_content = generate_mermaid_chart(projects)
+    # 3. Smart Roadmap Highlighting (Dynamically Generated & Sanitized)
+    roadmap_content = generate_mermaid_chart(projects)
 
-        return templates.TemplateResponse(
+    return templates.TemplateResponse(
         request=request, 
         name="index.html", 
         context={
