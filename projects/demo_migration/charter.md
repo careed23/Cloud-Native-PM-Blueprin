@@ -1,6 +1,7 @@
 ---
 project_name: "Demo Cloud Migration"
 status: "Green"
+completion_pct: 65
 next_steps: "Finalize IAM roles mapping and begin initial data sync."
 owner: "Cloud Center of Excellence"
 ---

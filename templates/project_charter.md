@@ -1,6 +1,7 @@
 ---
 project_name: "Template Project"
 status: "Green"
+completion_pct: 10
 next_steps: "Initialize project kick-off and assign resources."
 owner: "PMO"
 ---

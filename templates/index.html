@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Console | Observability</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Mermaid.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Alpine.js for Modal State -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        /* CSS Scanline/Grid Background */
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            background-image: 
+                linear-gradient(rgba(30, 41, 59, 0.5) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(30, 41, 59, 0.5) 1px, transparent 1px);
+            background-size: 30px 30px;
+            background-position: center center;
+        }
+
+        .panel-glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 0.75rem;
+        }
+
+        /* The Card Glow Effect based on Status */
+        .glow-Red { box-shadow: 0 0 15px -3px rgba(239, 68, 68, 0.4); border: 1px solid rgba(239, 68, 68, 0.3) !important; }
+        .glow-Yellow { box-shadow: 0 0 15px -3px rgba(245, 158, 11, 0.3); border: 1px solid rgba(245, 158, 11, 0.3) !important; }
+        .glow-Green { box-shadow: 0 0 15px -3px rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.2) !important; }
+
+        .card { transition: transform 0.2s; cursor: pointer; }
+        .card:hover { transform: translateY(-2px); }
+
+        /* Status Badge Colors */
+        .badge-Red { background-color: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+        .badge-Yellow { background-color: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2); }
+        .badge-Green { background-color: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
+        
+        .progress-Red { background-color: #ef4444; }
+        .progress-Yellow { background-color: #f59e0b; }
+        .progress-Green { background-color: #10b981; }
+
+        /* Terminal Window */
+        .terminal-scroll {
+            height: 150px;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            scrollbar-width: thin;
+            scrollbar-color: #475569 transparent;
+        }
+
+        /* Risk Matrix Grid */
+        .risk-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(5, 1fr);
+            gap: 2px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2px;
+            aspect-ratio: 1;
+            max-width: 300px;
+        }
+
+        .risk-cell { background: rgba(30, 41, 59, 0.8); display: flex; align-items: center; justify-content: center; position: relative;}
+        .cell-critical { background: rgba(239, 68, 68, 0.2); }
+        .cell-high { background: rgba(245, 158, 11, 0.2); }
+        .cell-med { background: rgba(234, 179, 8, 0.1); }
+        .cell-low { background: rgba(16, 185, 129, 0.1); }
+
+        .risk-dot {
+            width: 14px; height: 14px; border-radius: 50%;
+            box-shadow: 0 0 8px currentColor;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 8px; font-weight: bold; color: white;
+        }
+
+        /* Modal Overlay */
+        .modal-bg { background-color: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); }
+        
+        /* Markdown rendering inside modal */
+        .prose h1 { font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem; color: #f8fafc; }
+        .prose h2 { font-size: 1.25rem; font-weight: bold; margin-top: 1.5rem; margin-bottom: 0.5rem; color: #e2e8f0; }
+        .prose table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        .prose th, .prose td { border: 1px solid #475569; padding: 0.5rem; text-align: left; }
+        .prose th { background-color: #1e293b; }
+    </style>
+</head>
+<body class="min-h-screen p-8" x-data="{ modalOpen: false, activeProject: null }">
+
+    <header class="mb-8 flex items-center justify-between border-b border-slate-700 pb-4">
+        <div class="flex items-center gap-3">
+            <i data-lucide="activity" class="w-8 h-8 text-cyan-400"></i>
+            <h1 class="text-3xl font-bold tracking-tight text-slate-100 font-mono">Control Plane <span class="text-slate-500 font-light text-xl">| Observability</span></h1>
+        </div>
+        <div class="flex items-center gap-2 text-sm font-mono text-slate-400">
+            <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+            SYSTEM STATUS: <span class="text-emerald-400 font-bold">ONLINE</span>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto space-y-8">
+
+        <!-- 1. Global Fleet Telemetry Header -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="panel-glass p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-400 font-mono uppercase tracking-wider mb-1">Total Deployments</p>
+                    <p class="text-3xl font-bold text-white">{{ telemetry.total_projects }}</p>
+                </div>
+                <div class="p-3 bg-blue-500/10 rounded-lg"><i data-lucide="server" class="w-8 h-8 text-blue-400"></i></div>
+            </div>
+
+            <div class="panel-glass p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-400 font-mono uppercase tracking-wider mb-1">System Health</p>
+                    <p class="text-3xl font-bold {% if telemetry.health > 80 %}text-emerald-400{% else %}text-amber-400{% endif %}">{{ telemetry.health }}%</p>
+                </div>
+                <div class="p-3 bg-emerald-500/10 rounded-lg"><i data-lucide="shield-check" class="w-8 h-8 text-emerald-400"></i></div>
+            </div>
+
+            <div class="panel-glass p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-400 font-mono uppercase tracking-wider mb-1">Open Risks</p>
+                    <p class="text-3xl font-bold {% if telemetry.open_risks > 3 %}text-red-400{% else %}text-amber-400{% endif %}">{{ telemetry.open_risks }}</p>
+                </div>
+                <div class="p-3 bg-red-500/10 rounded-lg"><i data-lucide="alert-triangle" class="w-8 h-8 text-red-400"></i></div>
+            </div>
+        </section>
+
+        <!-- Main Dashboard Split: Roadmap & Grid vs Risk Heatmap -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            
+            <!-- Left Side: Roadmap and Instances -->
+            <div class="lg:col-span-3 space-y-8">
+                <!-- Roadmap Section -->
+                {% if roadmap %}
+                <section class="panel-glass p-6">
+                    <h2 class="text-sm font-semibold text-slate-300 mb-4 tracking-widest uppercase flex items-center gap-2">
+                        <i data-lucide="git-branch" class="w-4 h-4 text-indigo-400"></i> Deployment Roadmap
+                    </h2>
+                    <div class="overflow-x-auto">
+                        <div class="mermaid">{{ roadmap }}</div>
+                    </div>
+                </section>
+                {% endif %}
+
+                <!-- Projects Grid Section -->
+                <section>
+                    <h2 class="text-sm font-semibold text-slate-300 mb-4 tracking-widest uppercase flex items-center gap-2">
+                        <i data-lucide="cpu" class="w-4 h-4 text-cyan-400"></i> Active Instances
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {% for project in projects %}
+                        
+                        <!-- Convert Python dict to JSON for AlpineJS -->
+                        <div class="panel-glass card p-6 flex flex-col justify-between h-full glow-{{ project.status }}"
+                             @click="activeProject = {{ project | tojson | forceescape }}; modalOpen = true;">
+                            
+                            <!-- Card Header -->
+                            <div class="mb-4 flex justify-between items-start">
+                                <div class="flex gap-3 items-center">
+                                    <i data-lucide="database" class="w-6 h-6 text-slate-400"></i>
+                                    <div>
+                                        <h3 class="text-lg font-bold text-white leading-tight">{{ project.name }}</h3>
+                                        <p class="text-xs text-slate-400 font-mono mt-1">OWNER: {{ project.owner }}</p>
+                                    </div>
+                                </div>
+                                <span class="px-2 py-1 text-[10px] font-bold rounded bg-slate-800 uppercase tracking-widest badge-{{ project.status }}">
+                                    {{ project.status }}
+                                </span>
+                            </div>
+
+                            <!-- Progress Bar -->
+                            <div class="mb-6">
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-slate-400 font-medium font-mono">CAPACITY</span>
+                                    <span class="text-slate-200 font-bold font-mono">{{ project.completion_pct }}%</span>
+                                </div>
+                                <div class="w-full bg-slate-700/50 rounded-full h-1.5">
+                                    <div class="progress-{{ project.status }} h-1.5 rounded-full transition-all duration-500" style="width: {{ project.completion_pct }}%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Next Steps -->
+                            <div class="mt-auto bg-slate-900/40 rounded p-3 border border-slate-700/30">
+                                <p class="text-[10px] text-slate-500 mb-1 font-mono uppercase tracking-widest flex items-center gap-1">
+                                    <i data-lucide="terminal" class="w-3 h-3"></i> STDOUT
+                                </p>
+                                <p class="text-sm text-slate-300 line-clamp-2">{{ project.next_steps }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Side: Risk Heatmap -->
+            <div class="lg:col-span-1 space-y-8">
+                <section class="panel-glass p-5">
+                    <h2 class="text-sm font-semibold text-slate-300 mb-4 tracking-widest uppercase flex items-center gap-2">
+                        <i data-lucide="crosshair" class="w-4 h-4 text-amber-400"></i> Threat Matrix
+                    </h2>
+                    
+                    <div class="flex">
+                        <div class="flex flex-col justify-around text-[10px] text-slate-500 uppercase writing-vertical-rl rotate-180 mr-2 tracking-widest" style="writing-mode: vertical-rl;">
+                            <span>Impact</span>
+                        </div>
+                        <div class="risk-grid w-full" id="riskGrid">
+                            <!-- JS populated -->
+                        </div>
+                    </div>
+                    <div class="text-center text-[10px] text-slate-500 uppercase mt-2 tracking-widest">
+                        Probability
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="mt-6 space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-thin text-xs">
+                        {% for risk in risks %}
+                        <div class="bg-slate-800/50 p-2 rounded border border-slate-700/50">
+                            <span class="font-bold text-amber-400">{{ risk.id }}</span>: <span class="text-slate-300">{{ risk.description }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Real-time Log Feed -->
+        <section class="panel-glass p-0 overflow-hidden border-t-2 border-t-slate-600">
+            <div class="bg-slate-800/80 px-4 py-2 border-b border-slate-700 flex justify-between items-center">
+                <h2 class="text-xs font-mono text-slate-300 uppercase flex items-center gap-2">
+                    <i data-lucide="terminal-square" class="w-4 h-4"></i> System Event Log
+                </h2>
+                <div class="flex gap-1">
+                    <div class="w-2 h-2 rounded-full bg-slate-500"></div>
+                    <div class="w-2 h-2 rounded-full bg-slate-500"></div>
+                    <div class="w-2 h-2 rounded-full bg-slate-500"></div>
+                </div>
+            </div>
+            <div class="terminal-scroll p-4 text-xs text-green-400">
+                {% for event in system_events %}
+                <div class="mb-1 opacity-80 hover:opacity-100 transition-opacity">> {{ event }}</div>
+                {% endfor %}
+                <div class="animate-pulse">> _</div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 3. Instance Details Modal (AlpineJS) -->
+    <div x-show="modalOpen" class="fixed inset-0 z-50 flex justify-end" style="display: none;">
+        <!-- Backdrop -->
+        <div x-show="modalOpen" x-transition.opacity class="fixed inset-0 modal-bg" @click="modalOpen = false"></div>
+        
+        <!-- Slide-over panel -->
+        <div x-show="modalOpen" 
+             x-transition:enter="transition ease-in-out duration-300 transform"
+             x-transition:enter-start="translate-x-full"
+             x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition ease-in-out duration-300 transform"
+             x-transition:leave-start="translate-x-0"
+             x-transition:leave-end="translate-x-full"
+             class="relative w-full max-w-2xl bg-slate-900 border-l border-slate-700 h-full overflow-y-auto shadow-2xl flex flex-col">
+            
+            <!-- Header -->
+            <div class="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/90 sticky top-0 backdrop-blur z-10">
+                <div>
+                    <h2 class="text-2xl font-bold font-mono text-white" x-text="activeProject?.name"></h2>
+                    <p class="text-slate-400 text-sm font-mono mt-1">INSTANCE ID: <span x-text="activeProject?.name.toLowerCase().replace(/\s+/g, '-')"></span></p>
+                </div>
+                <button @click="modalOpen = false" class="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Content -->
+            <div class="p-6 flex-1 space-y-8">
+                
+                <!-- Git Log Block -->
+                <div class="bg-black/50 border border-slate-800 rounded-lg p-4 font-mono text-xs">
+                    <h3 class="text-slate-500 mb-2 uppercase tracking-widest flex items-center gap-2"><i data-lucide="git-commit" class="w-4 h-4"></i> Commit History</h3>
+                    <div class="space-y-1 text-slate-300">
+                        <template x-for="log in activeProject?.logs" :key="log">
+                            <div class="opacity-80" x-text="log"></div>
+                        </template>
+                        <div x-show="!activeProject?.logs || activeProject.logs.length === 0" class="text-slate-600 italic">No recent commits found in directory.</div>
+                    </div>
+                </div>
+
+                <!-- Markdown Content Rendered -->
+                <div class="prose prose-invert max-w-none text-slate-300 text-sm leading-relaxed" x-html="activeProject?.html_content">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inject Risks for Heatmap JS -->
+    <script id="riskData" type="application/json">
+        {{ risks | tojson | safe }}
+    </script>
+
+    <script>
+        // Initialize Icons & Mermaid
+        lucide.createIcons();
+        mermaid.initialize({ startOnLoad: true, theme: 'dark', backgroundColor: 'transparent' });
+
+        // Heatmap Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const grid = document.getElementById('riskGrid');
+            const mapScale = (val) => {
+                const v = val.toLowerCase();
+                if(v.includes('high')) return 4;
+                if(v.includes('medium') || v.includes('med')) return 2;
+                if(v.includes('low')) return 0;
+                return 2;
+            };
+
+            const riskDataRaw = document.getElementById('riskData').textContent;
+            let risks = [];
+            try { risks = JSON.parse(riskDataRaw); } catch(e) {}
+
+            const gridMap = Array(5).fill(null).map(() => Array(5).fill([]));
+            risks.forEach((r) => {
+                const probScore = mapScale(r.probability); // X
+                const impactScore = 4 - mapScale(r.impact); // Y (invert so High is top)
+                gridMap[impactScore][probScore] = [...gridMap[impactScore][probScore], r];
+            });
+
+            for (let row = 0; row < 5; row++) {
+                for (let col = 0; col < 5; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'risk-cell';
+                    
+                    const severity = (4-row) + col; 
+                    if (severity >= 6) cell.classList.add('cell-critical');
+                    else if (severity >= 4) cell.classList.add('cell-high');
+                    else if (severity >= 2) cell.classList.add('cell-med');
+                    else cell.classList.add('cell-low');
+
+                    const risksInCell = gridMap[row][col];
+                    if (risksInCell.length > 0) {
+                        const marker = document.createElement('div');
+                        marker.className = 'risk-dot';
+                        // Color the dot based on severity
+                        if (severity >= 6) marker.style.color = '#ef4444'; // Red
+                        else if (severity >= 4) marker.style.color = '#f59e0b'; // Amber
+                        else marker.style.color = '#10b981'; // Green
+                        
+                        marker.style.backgroundColor = 'currentColor';
+                        marker.innerText = risksInCell.length;
+                        marker.title = risksInCell.map(r => r.id).join(', ');
+                        cell.appendChild(marker);
+                    }
+                    grid.appendChild(cell);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
