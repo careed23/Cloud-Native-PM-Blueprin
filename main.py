@@ -13,8 +13,9 @@ import io
 import functools
 import random
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timedelta
 import asyncio
+import re
 
 # 1. Secure API Management
 load_dotenv()
@@ -49,6 +50,52 @@ def get_recent_commits_for_path(path_pattern, limit=3):
         return logs
     except Exception as e:
         return [f"[ERROR] Telemetry failure: {str(e)}"]
+
+# 2. Sanitize Function
+def sanitize_mermaid_string(text: str) -> str:
+    """Cleans project names and status strings to prevent Mermaid.js syntax errors."""
+    if not text:
+        return "Unknown"
+    # Remove characters that break mermaid syntax (colons, commas, brackets, quotes)
+    cleaned = re.sub(r'[:;,\[\]"\'\(\)]', '', str(text))
+    return cleaned.strip()
+
+def generate_dynamic_roadmap(projects):
+    if not projects:
+        return ""
+
+    lines = [
+        "gantt",
+        "    title Dynamic System Trajectory",
+        "    dateFormat YYYY-MM-DD",
+        "    axisFormat %m/%d",
+        "    classDef green fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff;",
+        "    classDef yellow fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff;",
+        "    classDef red fill:#ef4444,stroke:#b91c1c,stroke-width:2px,color:#fff;"
+    ]
+
+    base_date = datetime.utcnow()
+
+    for idx, proj in enumerate(projects):
+        safe_name = sanitize_mermaid_string(proj.get('name', f'Project {idx}'))
+        status = sanitize_mermaid_string(proj.get('status', 'Green')).lower()
+        
+        # Ensure status translates to one of our defined classes
+        if status not in ['green', 'yellow', 'red']:
+            status = 'green'
+
+        lines.append(f"    section {safe_name}")
+        
+        # Generate dynamic timeline bars
+        start = (base_date + timedelta(days=(idx * 5))).strftime('%Y-%m-%d')
+        duration = max(10, proj.get('completion_pct', 30))
+        task_id = f"t{idx}"
+        
+        # Format: Task Name : [tags], [id], [start_date], [length]
+        lines.append(f"    Execution Phase :active, {task_id}, {start}, {duration}d")
+        lines.append(f"    class {task_id} {status}")
+
+    return "\n".join(lines)
 
 @functools.lru_cache(maxsize=1)
 def get_projects_cached():
@@ -287,19 +334,8 @@ async def read_dashboard(request: Request):
     active_risks = sum(1 for r in risks if r.get('impact', 0) > 3 and r.get('status', '').lower() != 'closed')
     total_monthly_spend = sum(p.get('monthly_spend', 0) for p in projects)
     
-    roadmap_content = ""
-    if os.path.exists("roadmap.mmd"):
-        with open("roadmap.mmd", "r", encoding='utf-8') as f:
-            roadmap_content = f.read()
-            
-        dynamic_styles = "\n    classDef green fill:#10b981,stroke:#047857;\n    classDef yellow fill:#f59e0b,stroke:#b45309;\n    classDef red fill:#ef4444,stroke:#b91c1c;\n"
-        
-        # Only inject if we aren't in portfolio mode which breaks the name matching
-        if not PORTFOLIO_MODE and "Demo Cloud Migration" in [p['name'] for p in projects]:
-            status = next(p['status'] for p in projects if p['name'] == "Demo Cloud Migration").lower()
-            dynamic_styles += f"    class des1,des2 {status};\n"
-            
-        roadmap_content += dynamic_styles
+        # 3. Smart Roadmap Highlighting (Dynamically Generated & Sanitized)
+    roadmap_content = generate_dynamic_roadmap(projects)
 
     return templates.TemplateResponse(
         request=request, 

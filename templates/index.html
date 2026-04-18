@@ -303,17 +303,24 @@
                     </div>
                 </section>
 
-                <!-- Roadmap -->
-                {% if roadmap %}
+                                <!-- Roadmap -->
                 <section class="panel-glass p-6">
                     <h2 class="text-xs font-mono text-slate-500 mb-4 tracking-widest uppercase flex items-center gap-2">
                         <i data-lucide="git-pull-request" class="w-4 h-4 text-indigo-400"></i> Trajectory Matrix
                     </h2>
-                    <div class="overflow-x-auto text-sm bg-[#020617]/50 rounded-lg p-2 border border-slate-800">
-                        <div class="mermaid">{{ roadmap }}</div>
+                    <div class="overflow-x-auto text-sm bg-[#020617]/50 rounded-lg p-2 border border-slate-800 min-h-[150px] flex items-center justify-center">
+                        {% if roadmap %}
+                            <div class="mermaid w-full">
+                                {{ roadmap }}
+                            </div>
+                        {% else %}
+                            <div class="text-slate-500 font-mono text-xs text-center">
+                                <i data-lucide="activity" class="w-6 h-6 mx-auto mb-2 opacity-50"></i>
+                                INSUFFICIENT DATA FOR TRAJECTORY CALCULATION
+                            </div>
+                        {% endif %}
                     </div>
                 </section>
-                {% endif %}
             </div>
 
             <!-- Right Side: Threat Matrix & Events -->
