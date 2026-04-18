@@ -11,6 +11,15 @@ import git
 from xhtml2pdf import pisa
 import io
 import functools
+import random
+from dotenv import load_dotenv
+from datetime import datetime
+import asyncio
+
+# 1. Secure API Management
+load_dotenv()
+PORTFOLIO_MODE = os.getenv('PORTFOLIO_MODE', 'false').lower() == 'true'
+MOCK_AI_MODE = os.getenv('MOCK_AI_MODE', 'true').lower() == 'true'
 
 app = FastAPI(title="Mission Control | Observability Platform")
 
@@ -36,25 +45,26 @@ def get_recent_commits_for_path(path_pattern, limit=3):
             logs.append(f"[{c.hexsha[:7]}] {msg_short} ({date_str})")
             
         if not logs:
-            return ["[INFO] No recent deployment logs found for instance."]
+            return ["[INFO] No recent deployment logs found."]
         return logs
     except Exception as e:
         return [f"[ERROR] Telemetry failure: {str(e)}"]
 
-# 4. Performance Optimization (The "Snappiness" Fix)
 @functools.lru_cache(maxsize=1)
 def get_projects_cached():
     projects_data = []
     search_pattern = os.path.join(PROJECTS_DIR, '**', '*.md')
     md_files = glob.glob(search_pattern, recursive=True)
 
-    for filepath in md_files:
+    for idx, filepath in enumerate(md_files):
         try:
             if 'charter' in filepath.lower() or 'readme' in filepath.lower():
                 with open(filepath, 'r', encoding='utf-8') as f:
                     post = frontmatter.load(f)
                     
                 if 'project_name' in post.keys():
+                    # 3. Portfolio Mode Anonymization
+                    name = f"Project Alpha-{idx+1}" if PORTFOLIO_MODE else post['project_name']
                     status = post.get('status', 'Unknown')
                     comp_pct = post.get('completion_pct', 0)
                     monthly_spend = post.get('monthly_spend', 0)
@@ -64,6 +74,10 @@ def get_projects_cached():
                     if isinstance(monthly_spend, str):
                         monthly_spend = int(monthly_spend.replace('$', '').replace(',', '').strip())
 
+                    # Scramble budget if Portfolio Mode
+                    if PORTFOLIO_MODE:
+                        monthly_spend = random.randint(15000, 150000)
+
                     html_content = markdown.markdown(post.content, extensions=['tables', 'fenced_code'])
 
                     project_dir = os.path.dirname(filepath)
@@ -71,9 +85,10 @@ def get_projects_cached():
                     git_logs = get_recent_commits_for_path(normalized_dir, limit=3)
 
                     projects_data.append({
-                        'name': post['project_name'],
+                        'id': f"proj-{idx}",
+                        'name': name,
                         'status': status,
-                        'owner': post.get('owner', 'Unassigned'),
+                        'owner': "Classified" if PORTFOLIO_MODE else post.get('owner', 'Unassigned'),
                         'completion_pct': comp_pct,
                         'monthly_spend': monthly_spend,
                         'next_steps': post.get('next_steps', 'None'),
@@ -117,12 +132,15 @@ def get_risks_cached():
                             prob = 3
                             impact = 3
                             
-                        details_md = f"**Risk Owner:** {cols[6] if len(cols) > 6 else 'Unassigned'}\n\n**Mitigation Strategy:**\n> {cols[5]}"
+                        desc = "Classified Threat Vector" if PORTFOLIO_MODE else cols[2]
+                        owner = "Classified" if PORTFOLIO_MODE else (cols[6] if len(cols) > 6 else 'Unassigned')
+                        
+                        details_md = f"**Risk Owner:** {owner}\n\n**Mitigation Strategy:**\n> {cols[5]}"
                         html_content = markdown.markdown(details_md)
                             
                         risks.append({
                             'id': cols[1],
-                            'description': cols[2],
+                            'description': desc,
                             'probability': prob,
                             'impact': impact,
                             'status': cols[7] if len(cols) > 7 else 'Open',
@@ -135,27 +153,52 @@ def get_risks_cached():
 def get_risks():
     return get_risks_cached()
 
-def generate_ai_briefing(projects, risks):
-    """1. AI-Driven System Briefing Placeholder"""
-    # In a real setup, this would call boto3.client('bedrock-runtime')
-    # and pass the aggregated JSON of projects and risks.
+async def generate_ai_briefing(projects, risks):
+    """1. Secure API Management & Mock Mode"""
+    # Simulate LLM Latency for skeleton loading effect
+    await asyncio.sleep(1)
     
     critical_risks = [r for r in risks if r['impact'] > 3]
     red_projects = [p for p in projects if p['status'].lower() == 'red']
     
-    if not critical_risks and not red_projects:
-        return "System is nominal. No high-impact threats detected. Resource allocation is optimized across the active deployment fleet."
-    
-    if critical_risks:
-        threat = critical_risks[0]
-        return f"System requires attention. Risk {threat['id']} ({threat['description']}) is threatening operational stability. Recommend immediately reviewing mitigation strategy assigned to {threat.get('owner', 'Unassigned')}."
+    if MOCK_AI_MODE:
+        responses = [
+            "System intelligence suggests nominal behavior. Recommend maintaining current capacity allocation.",
+            f"Heuristic analysis indicates {len(critical_risks)} vectors require immediate attention to prevent deployment bottleneck.",
+            f"Resource contention detected in backend zones. Advise shifting compute allocation to mitigate {len(red_projects)} failing nodes."
+        ]
+        return random.choice(responses)
         
-    return "System alert. Multiple active instances are failing health checks. Recommend halting non-critical deployments and shifting resources to stabilize Red status nodes."
+    # Real integration goes here using os.getenv('AWS_ACCESS_KEY_ID')
+    return "Amazon Bedrock Response: System requires attention on High Impact risks."
+
+@app.get("/api/ai-briefing")
+async def api_ai_briefing():
+    """Async endpoint for the AI Briefing to load independently"""
+    projects = get_projects()
+    risks = get_risks()
+    briefing = await generate_ai_briefing(projects, risks)
+    return JSONResponse({"briefing": briefing})
+
+@app.get("/api/state")
+async def get_system_state():
+    """2. Dynamic Data Refresh Endpoint"""
+    projects = get_projects()
+    # Return light-weight state for polling
+    state = {
+        "projects": [
+            {
+                "id": p["id"],
+                "logs": p["logs"]
+            } for p in projects
+        ]
+    }
+    return JSONResponse(state)
 
 @app.get("/events")
 async def get_system_events():
     if not repo:
-        return JSONResponse({"events": ["[WARN] Observability degraded. Git repository missing."]})
+        return JSONResponse({"events": ["[WARN] Observability degraded. Git repository missing."] * 3})
     
     events = []
     try:
@@ -179,33 +222,26 @@ async def get_system_events():
 
 @app.post("/sync")
 async def manual_sync():
-    """Endpoint for Trigger Manual Sync"""
     if not repo:
-        # If no repo, just clear the cache anyway
         get_projects_cached.cache_clear()
         get_risks_cached.cache_clear()
         return JSONResponse({"status": "success", "message": "Local Cache Cleared"})
     try:
         origin = repo.remotes.origin
         origin.pull()
-        # Clear the python cache so next page load parses the fresh markdown files
         get_projects_cached.cache_clear()
         get_risks_cached.cache_clear()
         return JSONResponse({"status": "success", "message": "Telemetry Synced with Origin"})
     except Exception as e:
-        # Fallback cache clear
         get_projects_cached.cache_clear()
         get_risks_cached.cache_clear()
         return JSONResponse({"status": "error", "message": str(e)})
 
 @app.get("/export")
 async def export_report(request: Request):
-    """2. Stakeholder Export to PDF"""
     projects = get_projects()
     risks = get_risks()
-    briefing = generate_ai_briefing(projects, risks)
     
-    # Render a separate HTML template that is highly simplified for PDF generation
     html_content = f"""
     <html>
     <head>
@@ -216,22 +252,15 @@ async def export_report(request: Request):
             table {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
             th, td {{ border: 1px solid #cbd5e1; padding: 8px; text-align: left; }}
             th {{ background-color: #f1f5f9; }}
-            .alert {{ background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 10px; margin-bottom: 20px; }}
         </style>
     </head>
     <body>
         <h1>Mission Control | Executive Summary</h1>
-        
-        <div class="alert">
-            <strong>AI Briefing:</strong> {briefing}
-        </div>
-
         <h2>Active Projects</h2>
         <table>
             <tr><th>Project</th><th>Status</th><th>Completion</th><th>Monthly Spend</th></tr>
             {"".join(f"<tr><td>{p['name']}</td><td>{p['status']}</td><td>{p['completion_pct']}%</td><td>${p['monthly_spend']}</td></tr>" for p in projects)}
         </table>
-
         <h2>Critical Risks</h2>
         <table>
             <tr><th>ID</th><th>Description</th><th>Impact</th><th>Probability</th></tr>
@@ -241,7 +270,6 @@ async def export_report(request: Request):
     </html>
     """
     
-    # Create PDF
     pdf_path = "executive_summary.pdf"
     with open(pdf_path, "w+b") as result_file:
         pisa_status = pisa.CreatePDF(io.StringIO(html_content), dest=result_file)
@@ -259,21 +287,15 @@ async def read_dashboard(request: Request):
     active_risks = sum(1 for r in risks if r.get('impact', 0) > 3 and r.get('status', '').lower() != 'closed')
     total_monthly_spend = sum(p.get('monthly_spend', 0) for p in projects)
     
-    ai_briefing = generate_ai_briefing(projects, risks)
-
-    # 3. Smart Roadmap Highlighting
-    # We parse the roadmap and dynamically inject CSS based on project names and statuses
     roadmap_content = ""
     if os.path.exists("roadmap.mmd"):
         with open("roadmap.mmd", "r", encoding='utf-8') as f:
             roadmap_content = f.read()
             
-        # Add dynamic class definitions to Mermaid based on actual project statuses
-        # We look for the "active" keyword which mermaid uses, or we inject classDefs
         dynamic_styles = "\n    classDef green fill:#10b981,stroke:#047857;\n    classDef yellow fill:#f59e0b,stroke:#b45309;\n    classDef red fill:#ef4444,stroke:#b91c1c;\n"
         
-        # Extremely basic injection for the demo roadmap tags
-        if "Demo Cloud Migration" in [p['name'] for p in projects]:
+        # Only inject if we aren't in portfolio mode which breaks the name matching
+        if not PORTFOLIO_MODE and "Demo Cloud Migration" in [p['name'] for p in projects]:
             status = next(p['status'] for p in projects if p['name'] == "Demo Cloud Migration").lower()
             dynamic_styles += f"    class des1,des2 {status};\n"
             
@@ -292,6 +314,7 @@ async def read_dashboard(request: Request):
                 "monthly_spend": total_monthly_spend
             },
             "risks": risks,
-            "ai_briefing": ai_briefing
+            "portfolio_mode": PORTFOLIO_MODE,
+            "system_time": datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
         }
     )

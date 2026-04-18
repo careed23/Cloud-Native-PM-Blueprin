@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  mission-control:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - PORTFOLIO_MODE=true
+      - MOCK_AI_MODE=true
+    volumes:
+      - ./projects:/app/projects
+      - ./risks:/app/risks
+      - ./templates:/app/templates
+    restart: unless-stopped

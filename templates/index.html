@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mission Control | Enterprise</title>
+    <title>Mission Control | Production</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <style>
-        /* Day 2: Blueprint Grid Background */
         body {
-            background-color: #020617; /* Very dark slate, almost black */
+            background-color: #020617;
             color: #f8fafc;
             font-family: 'Inter', sans-serif;
             background-image: 
@@ -23,7 +22,6 @@
             position: relative;
         }
 
-        /* Radial Overlay for focus */
         body::before {
             content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: radial-gradient(circle at center, transparent 0%, #020617 90%);
@@ -38,12 +36,18 @@
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
 
-        /* Smart Alerts */
         .alert-pulse { animation: borderPulse 2s infinite; }
         @keyframes borderPulse {
             0% { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
             50% { border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
             100% { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
+        }
+
+        /* Update Pulse for Dynamic Refresh */
+        .update-pulse { animation: logPulse 1.5s ease-out; }
+        @keyframes logPulse {
+            0% { background-color: rgba(16, 185, 129, 0.3); border-color: rgba(16, 185, 129, 0.8); }
+            100% { background-color: transparent; border-color: rgba(51, 65, 85, 0.8); }
         }
 
         .glow-card { transition: all 0.2s ease; cursor: pointer; }
@@ -57,7 +61,6 @@
         .progress-Yellow { background-color: #f59e0b; box-shadow: 0 0 10px #f59e0b; }
         .progress-Green { background-color: #10b981; box-shadow: 0 0 10px #10b981; }
 
-        /* The Risk Heatmap */
         .heatmap-container { display: grid; grid-template-columns: 20px 1fr; grid-template-rows: 1fr 20px; gap: 8px; padding: 10px; }
         .heat-grid { grid-column: 2; grid-row: 1; display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); gap: 2px; background: rgba(15, 23, 42, 0.9); border: 1px solid #334155; aspect-ratio: 1; }
         .heat-cell { position: relative; display: flex; align-items: center; justify-content: center; }
@@ -70,7 +73,6 @@
         .axis-y { grid-column: 1; grid-row: 1; writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-size: 10px; color: #64748b; letter-spacing: 2px; text-transform: uppercase;}
         .axis-x { grid-column: 2; grid-row: 2; text-align: center; font-size: 10px; color: #64748b; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px;}
 
-        /* Modals and Markdown Prose */
         .modal-bg { background-color: rgba(2, 6, 23, 0.85); backdrop-filter: blur(8px); }
         .prose h1 { color: #f8fafc; font-weight: 800; margin-bottom: 1.5rem; font-size: 1.875rem; border-bottom: 1px solid #334155; padding-bottom: 0.5rem;}
         .prose h2 { color: #e2e8f0; font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; font-size: 1.25rem;}
@@ -78,6 +80,15 @@
         .prose th, .prose td { border: 1px solid #334155; padding: 0.75rem; text-align: left; }
         .prose th { background-color: rgba(30, 41, 59, 0.8); color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;}
         .prose blockquote { border-left: 4px solid #38bdf8; padding-left: 1rem; color: #94a3b8; font-style: italic; }
+
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 4px;
+        }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
     </style>
 </head>
 <body class="min-h-screen p-6" x-data="{ 
@@ -101,14 +112,16 @@
         <div class="flex items-center gap-3">
             <i data-lucide="hex" class="w-8 h-8 text-sky-400"></i>
             <h1 class="text-3xl font-bold tracking-tight text-slate-100 font-mono">Mission Control <span class="text-slate-500 font-light text-xl">| Enterprise</span></h1>
+            
+            {% if portfolio_mode %}
+            <span class="ml-4 px-2 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded text-[10px] font-mono tracking-widest font-bold">PORTFOLIO MODE ACTIVE</span>
+            {% endif %}
         </div>
         <div class="flex items-center gap-4 text-sm font-mono text-slate-400">
-            <!-- 2. Export to PDF Button -->
             <a href="/export" target="_blank" class="flex items-center gap-2 text-slate-300 hover:text-white transition-colors mr-2">
                 <i data-lucide="download-cloud" class="w-4 h-4"></i> EXPORT REPORT
             </a>
             
-            <!-- Manual Sync Button -->
             <button @click="triggerSync()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded transition-colors border border-slate-600">
                 <i data-lucide="refresh-cw" class="w-4 h-4" :class="syncing ? 'animate-spin text-sky-400' : ''"></i> 
                 <span x-text="syncing ? 'SYNCING...' : 'MANUAL SYNC'"></span>
@@ -122,12 +135,32 @@
 
     <main class="max-w-[1600px] mx-auto space-y-8 relative z-10">
 
-        <!-- 1. AI-Driven "System Briefing" -->
-        <section class="panel-glass p-4 border-l-4 border-l-purple-500 flex items-start gap-4">
+        <!-- 1. AI-Driven "System Briefing" with Skeleton State -->
+        <section class="panel-glass p-4 border-l-4 border-l-purple-500 flex items-start gap-4" x-data="{
+            briefing: null,
+            loading: true,
+            async loadBriefing() {
+                try {
+                    const res = await fetch('/api/ai-briefing');
+                    const data = await res.json();
+                    this.briefing = data.briefing;
+                    this.loading = false;
+                } catch(e) {
+                    this.briefing = 'Unable to reach Intelligence Layer.';
+                    this.loading = false;
+                }
+            }
+        }" x-init="loadBriefing()">
             <div class="p-2 bg-purple-500/10 rounded mt-1"><i data-lucide="brain-circuit" class="w-6 h-6 text-purple-400"></i></div>
-            <div>
-                <h3 class="text-xs font-mono text-purple-400 tracking-widest uppercase mb-1">AI Operational Briefing</h3>
-                <p class="text-sm text-slate-300 font-sans leading-relaxed">{{ ai_briefing }}</p>
+            <div class="w-full">
+                <h3 class="text-xs font-mono text-purple-400 tracking-widest uppercase mb-2">AI Operational Briefing</h3>
+                
+                <div x-show="loading" class="space-y-2 w-full">
+                    <div class="skeleton h-4 w-3/4"></div>
+                    <div class="skeleton h-4 w-1/2"></div>
+                </div>
+                
+                <p x-show="!loading" class="text-sm text-slate-300 font-sans leading-relaxed" x-text="briefing" style="display: none;"></p>
             </div>
         </section>
 
@@ -181,7 +214,36 @@
             </div>
         </section>
 
-        <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
+        <!-- 2. Dynamic Data Refresh (Alpine Polling for Logs) -->
+        <div class="grid grid-cols-1 xl:grid-cols-4 gap-8" x-data="{
+            projectsState: {},
+            init() {
+                setInterval(() => this.pollState(), 60000);
+            },
+            async pollState() {
+                try {
+                    const res = await fetch('/api/state');
+                    const data = await res.json();
+                    
+                    data.projects.forEach(p => {
+                        // Compare current DOM logs with fetched logs
+                        const oldLogs = this.projectsState[p.id];
+                        const newLogs = JSON.stringify(p.logs);
+                        
+                        if (oldLogs && oldLogs !== newLogs) {
+                            // Trigger pulse animation
+                            const el = document.getElementById('logbox-' + p.id);
+                            if(el) {
+                                el.classList.remove('update-pulse');
+                                void el.offsetWidth; // trigger reflow
+                                el.classList.add('update-pulse');
+                            }
+                        }
+                        this.projectsState[p.id] = newLogs;
+                    });
+                } catch(e) {}
+            }
+        }">
             
             <!-- Left Side: Instances -->
             <div class="xl:col-span-3 space-y-8">
@@ -209,7 +271,6 @@
                                     <span class="px-2 py-1 text-[9px] font-bold rounded bg-slate-800/80 border border-slate-700 uppercase tracking-widest text-slate-300">
                                         {{ project.status }}
                                     </span>
-                                    <!-- Budget Indicator -->
                                     <span class="text-[10px] font-mono text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded border border-purple-400/20">
                                         ${{ "{:,}".format(project.monthly_spend) }}/mo
                                     </span>
@@ -226,7 +287,8 @@
                                 </div>
                             </div>
 
-                            <div class="mt-auto bg-[#020617] rounded border border-slate-800/80 p-3">
+                            <div id="logbox-{{ project.id }}" class="mt-auto bg-[#020617] rounded border border-slate-800/80 p-3 transition-colors duration-500"
+                                 x-init="projectsState['{{ project.id }}'] = '{{ project.logs | tojson | forceescape }}'">
                                 <div class="text-[9px] text-slate-500 font-mono uppercase tracking-widest mb-2 flex items-center gap-1">
                                     <i data-lucide="terminal" class="w-3 h-3"></i> LATEST_DEPLOY_LOGS
                                 </div>
@@ -305,14 +367,17 @@
 
             </div>
         </div>
+        
+        <!-- 5. Final Aesthetic Polish: Footer -->
+        <footer class="mt-12 text-center text-[10px] font-mono text-slate-500 pb-4">
+            MISSION CONTROL // V3.0 // LAST RENDERED: {{ system_time }}
+        </footer>
     </main>
 
     <!-- Deep Insight Modal (Alpine) -->
     <div x-show="modalOpen" class="fixed inset-0 z-50 flex justify-center items-center p-4 sm:p-6" style="display: none;">
-        <!-- Backdrop -->
         <div x-show="modalOpen" x-transition.opacity class="fixed inset-0 modal-bg" @click="modalOpen = false"></div>
         
-        <!-- Modal Panel -->
         <div x-show="modalOpen" 
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 scale-95"
@@ -322,10 +387,8 @@
              x-transition:leave-end="opacity-0 scale-95"
              class="relative w-full max-w-4xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
             
-            <!-- Header -->
             <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/95 backdrop-blur shrink-0">
                 <div class="flex items-center gap-3">
-                    <!-- Dynamic Icon based on type -->
                     <template x-if="modalType === 'project'">
                         <i data-lucide="box" class="w-6 h-6 text-sky-400"></i>
                     </template>
@@ -343,7 +406,6 @@
                 </button>
             </div>
 
-            <!-- Body -->
             <div class="p-6 overflow-y-auto bg-[#020617]">
                 <div class="prose prose-invert max-w-none text-slate-300 leading-relaxed font-sans" x-html="activeItem?.html_content"></div>
             </div>
@@ -359,7 +421,6 @@
         lucide.createIcons();
         mermaid.initialize({ startOnLoad: true, theme: 'dark', backgroundColor: 'transparent' });
 
-        // Heatmap Logic
         document.addEventListener('DOMContentLoaded', () => {
             const grid = document.getElementById('riskGrid');
             const rawData = document.getElementById('riskData').textContent;
@@ -403,13 +464,12 @@
             }
         });
 
-        // Event Polling
         document.addEventListener('alpine:init', () => {
             Alpine.data('systemEvents', () => ({
                 events: [],
                 init() {
                     this.fetchEvents();
-                    setInterval(() => this.fetchEvents(), 30000);
+                    setInterval(() => this.fetchEvents(), 60000); // Sync global events with dynamic log polling
                 },
                 async fetchEvents() {
                     try {
